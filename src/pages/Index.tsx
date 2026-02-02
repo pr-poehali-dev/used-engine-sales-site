@@ -8,6 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import Icon from '@/components/ui/icon';
+import Cart from '@/components/Cart';
+import { useToast } from '@/hooks/use-toast';
 
 interface Engine {
   id: number;
@@ -31,11 +33,22 @@ const engines: Engine[] = [
   { id: 6, brand: 'Honda', model: 'CR-V 2.4', volume: '2.4л', power: '190 л.с.', year: '2015-2018', price: '145 000', condition: 'Хорошее', mileage: '95 000 км', guarantee: '6 месяцев' },
 ];
 
+interface CartItem {
+  id: number;
+  brand: string;
+  model: string;
+  volume: string;
+  price: string;
+  quantity: number;
+}
+
 export default function Index() {
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [selectedVolume, setSelectedVolume] = useState<string>('all');
   const [compareList, setCompareList] = useState<number[]>([]);
   const [showComparison, setShowComparison] = useState(false);
+  const [cartItems, setCartItems] = useState<CartItem[]>([]);
+  const { toast } = useToast();
 
   const brands = ['all', ...Array.from(new Set(engines.map(e => e.brand)))];
   const volumes = ['all', ...Array.from(new Set(engines.map(e => e.volume)))];
@@ -56,6 +69,53 @@ export default function Index() {
 
   const comparedEngines = engines.filter(e => compareList.includes(e.id));
 
+  const addToCart = (engine: Engine) => {
+    const existingItem = cartItems.find(item => item.id === engine.id);
+    if (existingItem) {
+      setCartItems(cartItems.map(item => 
+        item.id === engine.id ? { ...item, quantity: item.quantity + 1 } : item
+      ));
+      toast({
+        title: 'Количество обновлено',
+        description: `${engine.brand} ${engine.model} — теперь ${existingItem.quantity + 1} шт. в корзине`,
+      });
+    } else {
+      setCartItems([...cartItems, {
+        id: engine.id,
+        brand: engine.brand,
+        model: engine.model,
+        volume: engine.volume,
+        price: engine.price,
+        quantity: 1
+      }]);
+      toast({
+        title: 'Добавлено в корзину',
+        description: `${engine.brand} ${engine.model}`,
+      });
+    }
+  };
+
+  const removeFromCart = (id: number) => {
+    setCartItems(cartItems.filter(item => item.id !== id));
+    toast({
+      title: 'Удалено из корзины',
+      variant: 'destructive',
+    });
+  };
+
+  const updateCartQuantity = (id: number, quantity: number) => {
+    setCartItems(cartItems.map(item => 
+      item.id === id ? { ...item, quantity } : item
+    ));
+  };
+
+  const clearCart = () => {
+    setCartItems([]);
+    toast({
+      title: 'Корзина очищена',
+    });
+  };
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border/40 backdrop-blur-sm sticky top-0 z-50 bg-background/80">
@@ -72,10 +132,18 @@ export default function Index() {
             <a href="#delivery" className="hover:text-primary transition-colors">Доставка</a>
             <a href="#contacts" className="hover:text-primary transition-colors">Контакты</a>
           </nav>
-          <Button variant="outline" className="border-primary/50 hover:bg-primary/10">
-            <Icon name="Phone" size={18} className="mr-2" />
-            +7 (999) 123-45-67
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="border-primary/50 hover:bg-primary/10 hidden sm:flex">
+              <Icon name="Phone" size={18} className="mr-2" />
+              +7 (999) 123-45-67
+            </Button>
+            <Cart 
+              items={cartItems}
+              onRemove={removeFromCart}
+              onUpdateQuantity={updateCartQuantity}
+              onClear={clearCart}
+            />
+          </div>
         </div>
       </header>
 
@@ -211,7 +279,10 @@ export default function Index() {
                   </div>
                 </CardContent>
                 <CardFooter className="flex gap-2">
-                  <Button className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70">
+                  <Button 
+                    className="flex-1 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70"
+                    onClick={() => addToCart(engine)}
+                  >
                     <Icon name="ShoppingCart" size={18} className="mr-2" />
                     Купить
                   </Button>
